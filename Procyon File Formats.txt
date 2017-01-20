@@ -1,0 +1,144 @@
+Procyon Doc - written by ipatix
+###############################
+
+00000000 ; ---------------------------------------------------------------------------
+00000000
+00000000 SONG_HEAD       struc ; (sizeof=0x40)
+00000000 ident           DCD ?
+00000004 field_4         DCD ?
+00000008 field_8         DCW ?
+0000000A field_A         DCW ?
+0000000C field_C         DCW ?
+0000000E field_E         DCW ?
+00000010 ext             SONG_HEAD_EX ?
+00000040 SONG_HEAD       ends
+00000040
+00000000 ; ---------------------------------------------------------------------------
+00000000
+00000000 SONG_HEAD_EX    struc ; (sizeof=0x30)
+00000000 field_0         DCW ?
+00000002 field_2         DCW ?
+00000004 field_4         DCW ?
+00000006 num_tracks      DCB ?                   ; needs confirmation
+00000007 field_7         DCB ?
+00000008 field_8         DCD ?
+0000000C field_C         DCD ?
+00000010 field_10        DCD ?
+00000014 field_14        DCW ?
+00000016 field_16        DCW ?
+00000018 field_18        DCB ?
+00000019 field_19        DCB ?
+0000001A field_1A        DCB ?
+0000001B field_1B        DCB ?
+0000001C field_1C        DCD ?
+00000020 field_20        DCB 16 dup(?)           ; string(C)
+00000030 SONG_HEAD_EX    ends
+00000030
+00000000 ; ---------------------------------------------------------------------------
+00000000
+00000000 TRACK_HEAD      struc ; (sizeof=0x14)
+00000000 ident           DCD ?
+00000004 field_4         DCD ?
+00000008 align           DCB ?                   ; aligned by the amount of bytes (usually 4)
+00000009 field_9         DCB ?
+0000000A field_A         DCW ?
+0000000C length          DCD ?
+00000010 field_10        DCB ?
+00000011 field_11        DCB ?
+00000012 field_12        DCB ?
+00000013 field_13        DCB ?
+00000014 TRACK_HEAD      ends
+00000014
+
+RAM:020B14C0 delay_lut       DCB   96,  72,  64,  48 ; 0
+RAM:020B14C0                                         ; DATA XREF: ply_cmd_handler:loc_2071620o
+RAM:020B14C0                                         ; RAM:off_2071778o
+RAM:020B14C0                 DCB   36,  32,  24,  18 ; 4
+RAM:020B14C0                 DCB   16,  12,   9,   8 ; 8
+RAM:020B14C0                 DCB    6,   4,   3,   2 ; 0xC
+RAM:020B14C0                 DCB    0,   0,   0,   0 ; 0x10
+
+
+SMD Info:
+
+0x0 File Header (0x40):
+.text "smdl"
+.int 0x0
+.int <FILESIZE>
+.byte 0x15, 0x4 (???)
+.hword ???
+.int 0x0 (???)
+.int 0x0 (???)
+.byte 0xD8, 0x7 (???)
+.hword ??? same for it's linked SWD
+.int ???
+.string <Name of Song> (zero terminated string, but length is always 0x10)
+.int 0x1 (???)
+.int 0x1 (???)
+.int 0xFFFFFFFF (probably not used)
+.int 0xFFFFFFFF (probably not used)
+
+0x40 Identifier/Type (0x40):
+.text "song"
+.int 0x1000000 (Sequence Type?)
+.int 0xFF10 (???)
+.byte 0xB0, 0xFF, 0xFF, 0xFF
+.hword 0x1 (???)
+.hword 0x30 (???)
+.hword 0xFF01 (???)
+.byte <Track Amount>
+.byte ???
+.int 0xF000000 (???)
+.int 0xFFFFFFFF (probably not used)
+.int 0x40000000 (???)
+.int 0x404000 (???)
+.byte 0x80 or 0x0 (???)
+.byte 0x02, 0x0, 0x8
+.int 0xFFFFFF00
+
+0x80 1st Track Header:
+.text "trk "
+.int 0x1000000 (???)
+.int 0xFF04 (???)
+.int length of track data NOT including the header
+
+
+
+
+
+Track Data Definition:
+
+ALWAYS STARTS WITH (4 byte aligned start):
+.byte <#currenttrack number>
+.byte <priority or channel ???>
+.hword 0x0
+
+.byte
+
+.byte 0x92, X = delay
+.byte 0x93, X, Y = delay (YX, LE-endian)
+.byte 0x98 = FINE / GOTO loop start, no args
+.byte 0x99 =
+
+.byte 0xA0 = Set octave
+.byte 0xA4
+.byte 0xA5
+.byte 0xA6
+.byte 0xA7
+.byte 0xA8 =
+.byte 0xA9 = / set higher 8 bits, maybe set instrument /w bank
+.byte 0xAA = \ set lower 8 bits
+.byte 0xAB
+.byte 0xAC 
+
+.byte 0xD7 = 
+.byte 0xDB = (rather simple command, basic logic)
+.byte 0xE0 = 
+.byte 0xE3 =
+.byte 0xE8 = SET PAN
+
+
+Note Encoding:
+
+0-0x7F: ???
+0bXXYYZZZZ: ZZZZ = key in octave; YY = next octave (rel, range -2 to 1); XX = folloed arguments
