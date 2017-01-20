@@ -1,5 +1,11 @@
-Procyon Doc - written by ipatix
-###############################
+/*
+############################################
+# Procyon Doc - written by ipatix          #
+# my research information about .smd files #
+############################################
+
+Just some notes I took during research, the interesting stuff is below. 
+You'll be most likely not looking for this up here.
 
 00000000 ; ---------------------------------------------------------------------------
 00000000
@@ -51,94 +57,213 @@ Procyon Doc - written by ipatix
 00000014
 
 RAM:020B14C0 delay_lut       DCB   96,  72,  64,  48 ; 0
-RAM:020B14C0                                         ; DATA XREF: ply_cmd_handler:loc_2071620o
-RAM:020B14C0                                         ; RAM:off_2071778o
 RAM:020B14C0                 DCB   36,  32,  24,  18 ; 4
 RAM:020B14C0                 DCB   16,  12,   9,   8 ; 8
 RAM:020B14C0                 DCB    6,   4,   3,   2 ; 0xC
-RAM:020B14C0                 DCB    0,   0,   0,   0 ; 0x10
 
+###################################
+# Interesting stuff starts here ! #
+###################################
 
 SMD Info:
 
-0x0 File Header (0x40):
-.text "smdl"
-.int 0x0
-.int <FILESIZE>
-.byte 0x15, 0x4 (???)
-.hword ???
-.int 0x0 (???)
-.int 0x0 (???)
-.byte 0xD8, 0x7 (???)
-.hword ??? same for it's linked SWD
-.int ???
-.string <Name of Song> (zero terminated string, but length is always 0x10)
-.int 0x1 (???)
-.int 0x1 (???)
-.int 0xFFFFFFFF (probably not used)
-.int 0xFFFFFFFF (probably not used)
+In the beginning is a "FileHeader" which is followed by the actual SongHeader (size of each 0x40)
+After both the individual Tracks follow. There is no index table. So one needs to go through each Track header to locate them all.
+In the end there is an "eoc" block (don't know what it does).	
+ */
 
-0x40 Identifier/Type (0x40):
-.text "song"
-.int 0x1000000 (Sequence Type?)
-.int 0xFF10 (???)
-.byte 0xB0, 0xFF, 0xFF, 0xFF
-.hword 0x1 (???)
-.hword 0x30 (???)
-.hword 0xFF01 (???)
-.byte <Track Amount>
-.byte ???
-.int 0xF000000 (???)
-.int 0xFFFFFFFF (probably not used)
-.int 0x40000000 (???)
-.int 0x404000 (???)
-.byte 0x80 or 0x0 (???)
-.byte 0x02, 0x0, 0x8
-.int 0xFFFFFF00
+struct FileHeader {             // offsets  | addítional information
+    char ident[4] = "smdl";     // 0x0      | file type identifier
+    char unknown_4[4];          // 0x4
+    int fileSize;               // 0x8      | file size in bytes
+    short magic = 0x415;        // 0xC      | must be that value, song shouldn't be recoginzed otherwise
+    short unknown_E;            // 0xE
+    char unknown_10[0x10];      // 0x10
+    char songName[0x10];        // 0x20     | Null terminated (if not filled) string of the song name
+    char unknown_30[0x10];      // 0x30
+}; // size = 0x40
 
-0x80 1st Track Header:
-.text "trk "
-.int 0x1000000 (???)
-.int 0xFF04 (???)
-.int length of track data NOT including the header
+struct SongHeader {
+    char ident[4] = "song";     // 0x0      | block identifier
+    int unknown_4;              // 0x4
+    short unkown_8;             // 0x8
+    short unknown_A;            // 0xA
+    short unknown_C;            // 0xC
+    short unknown_E;            // 0xE
+    short unknown_10;           // 0x10
+    short unknown_12;           // 0x12
+    short unknown_14;           // 0x14
+    char numTracks;             // 0x16     | the amount of tracks the song has
+    char unknown_17;            // 0x17
+    int unknown_18;             // 0x18
+    int unknown_1C;             // 0x1C
+    int unknown_20;             // 0x20
+    short unknown_24;           // 0x24
+    short unknown_26;           // 0x26
+    char unknown_28;            // 0x28
+    char unknown_29;            // 0x29
+    char unknown_2A;            // 0x2A
+    char unknown_2B;            // 0x2B
+    int unknown_2C;             // 0x2C
+    char unknown[0x10];         // 0x30
+}; // size = 0x40
 
+struct Track {
+    char ident[4] = "trk ";     // 0x0      | block identifier
+    int unknown_4;              // 0x4
+    char align;                 // 0x8      | Seems to leave room for at least n bytes (rounded up to 4 byte boundary) after the track header. This was 4 in all the cases I have seen.
+    char unknown_9;             // 0x9
+    short unknown_A;            // 0xA
+    int trackLength;            // 0xC      | track length in bytes (including the mystic 'align' bytes)
+    char spacing[4];            // 0x10     | As I've said, this is "usually" 4 bytes, see 'align' for details
 
+    char trackData[];           // 0x14     | *!* This is where all the magic happens *!* See below for encoding details
+}
 
-
-
-Track Data Definition:
-
-ALWAYS STARTS WITH (4 byte aligned start):
-.byte <#currenttrack number>
-.byte <priority or channel ???>
-.hword 0x0
-
-.byte
-
-.byte 0x92, X = delay
-.byte 0x93, X, Y = delay (YX, LE-endian)
-.byte 0x98 = FINE / GOTO loop start, no args
-.byte 0x99 =
-
-.byte 0xA0 = Set octave
-.byte 0xA4
-.byte 0xA5
-.byte 0xA6
-.byte 0xA7
-.byte 0xA8 =
-.byte 0xA9 = / set higher 8 bits, maybe set instrument /w bank
-.byte 0xAA = \ set lower 8 bits
-.byte 0xAB
-.byte 0xAC 
-
-.byte 0xD7 = 
-.byte 0xDB = (rather simple command, basic logic)
-.byte 0xE0 = 
-.byte 0xE3 =
-.byte 0xE8 = SET PAN
-
-
-Note Encoding:
-
-0-0x7F: ???
-0bXXYYZZZZ: ZZZZ = key in octave; YY = next octave (rel, range -2 to 1); XX = folloed arguments
+/*
+ * #####################
+ * # Track Data Format #
+ * #####################
+ *
+ * The Sequence Tracks work very similar to MIDI & co. Speed is given in BPM and "ticks" are 48 per quarter note.
+ * There is controller-commands, delays, notes, etc. Each is initiated by one key byte. See table below for their meaning.
+ * One command directly leads over to the next one if there is no delay spaced in between.
+ *
+ * When I refer to "cmd_byte" I refer to the byte that was initially used to decide which command to do. 
+ * Also, some commands work on ranges of command-bytes. The *to* means including the last given byte.
+ *
+ * Terms:
+ * byte             = 8 bits (0 to 255)
+ * sbyte      = 8 bits (-128 to 127)
+ * ushort   = 16 bits (0 to 65535)
+ * short            = 16 bits (-32768 to 32767)
+ * int              = 32 bits (-2147483648 to 2147483647)
+ *
+ *  - 0x0 to 0x7F:  Note:
+ *                      The cmd_byte of the note command directly refers to it's velocity. The command byte has 1 + n argument bytes:
+ *                      Arguments: (byte) "note_encoding", (n * bytes) note length in ticks (big endian)
+ *                      "note_encoding" is a bit complicated and can be best displayed in it's individual bits:
+ *                      8 bits: [XXYYZZZZ]
+ *                        XX: range (unsigned 2 bits: 0 to 3):  This tells how many note length bytes (n) follow after note_encoding
+ *                        YY: range (signed 2 bits: -2 to 1): This defines on which octave to play this note on. 
+ *                                             It works relative to the last note read from the track data (therefore it also updates that "last octave" variable). There is also an "octave set" command. See below for details.
+ *                        ZZZZ: range (unsigned 4 bits: 0 to 16, valid is 0 to 11):
+ *                                             This contains the actual note to play on the resulting octave of bits YY.
+ *                                             0 is equivalent to a 'C' and 11 to a 'B'.
+ *                                             Values higher than 11 will probably work but obviously don't set the last octave to the higher one.
+ *
+ *                      As already said, after that the note 'n' note length bytes follow.
+ *
+ *  - 0x80 to 0x8F: Arguments: none
+ *                  Effect:
+ *                      Delay by (delay_lut[cmd_byte - 0x80]) ticks. See below for delay values. All delay related commands update the "last_delayed_ticks" variable.
+ *  - 0x90:         Arguments: none
+ *                  Effect:
+ *                      Delay by 'n' ticks (last_delayed_ticks). 'n' is equivalent to the amount of ticks priorly delayed on this track.
+ *  - 0x91:         Arguments: (1 signed byte) relative_delay
+ *                  Effect:
+ *                      0x91 behaves the same as 0x90 but also has a *signed* byte argument which adds/subs relative_delay bytes to the last_delayed_ticks
+ *  - 0x92:         Arguments: (1 byte) absolute_delay
+ *                  Effect:
+ *                      Delays by absolute_delay ticks.
+ *  - 0x93:         Arguments: (1 ushort, little endian) absolute_delay.
+ *                  Effect:
+ *                      Same as 0x92 but with extended range due to having 2 argument bytes
+ *  - 0x94 to 0x97: ~currently unknown~
+ *  - 0x98:         Arguments: none
+ *                  Effect:
+ *                      If no loop point was set: End of Track
+ *                      If a loop point was set: Goto loop point
+ *  - 0x99:         Arguments: none
+ *                  Effect:
+ *                      Set loop point to current location
+ *  - 0x9A to 0x9B: ~currently unknown~
+ *  - 0x9C:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0x9D:         Arguments: none
+ *                  Effect: ~currently unknown~
+ *  - 0x9E to 0x9F: ~currently unknown~
+ *  - 0xA0:         Arguments: (1 byte) octave_set
+ *                  Effect:
+ *                      Sets the "last_octave" to the value of octave_set. This is usually initially called on each track.
+ *  - 0xA1 to 0xA3: ~currently unknown~
+ *  - 0xA4:         Arguments: (1 byte) tempo
+ *                  Effect:
+ *                      Sets the speed in BPM
+ *  - 0xA5 to 0xA7: ~currently unknown~
+ *  - 0xA8:         Arguments: (2 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xA9:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xAA:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *                      Note:   Command 0xA9 and 0xAA seem to set something common. Iirc 0xA9 sets the lower 8 bits and 0xAA the higher 8 bits
+ *                              This command seems to be quite frequently use, however, I didn't manage to reverse engineer what they do nor I could guess what they do. 
+ *                              When converting songs to MIDIs dropping this effect seems to not make things sound bad. So I literally have no idea what this does. 
+ *  - 0xAB:         ~currently unknown~
+ *  - 0xAC:         Arguments: (1 byte) program_number
+ *                  Effect:
+ *                      Sets the tracks instrument to program_number.
+ *  - 0xAD to 0xB1: ~currently unknown~
+ *  - 0xB2:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xB3:         ~currently unknown~
+ *  - 0xB4:         Arguments: (2 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xB5:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xB6 to 0xBD: ~currently unknown~
+ *  - 0xBE:         Arguments: (1 byte) mod_wheel
+ *                  Effect: Set Track's Modulation to value of mod_wheel
+ *  - 0xBF:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xC0:         Arguments: none
+ *                  Effect: ~currently unknown~
+ *  - 0xC1 to 0xCF: ~currently unknown~
+ *  - 0xD0:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xD1:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xD2:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xD3:         ~currently unknown~
+ *  - 0xD4:         Arguments: (3 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xD5:         ~currently unknown~
+ *  - 0xD6:         Arguments: (2 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xD7:         Arguments: (short) pitch_bend
+ *                  Effect: Set Track's pitch to pitch_bend
+ *                          I'm not sure how the Track get's it's bend range. Most songs seem to default to an +-8 semi-tones range but I've seen some that didn't follow that rule.
+ *  - 0xD8 to 0xDA: ~currently unknown~
+ *  - 0xDB:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xDC:         Arguments: (5 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xDD to 0xDF: ~currently unknown~
+ *  - 0xE0:         Arguments: (1 byte) vol, range 0-127
+ *                  Effect: Sets Track's volume to vol
+ *  - 0xE1:         ~currently unknown~
+ *  - 0xE2:         Arguments: (3 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xE3:         Arguments: (1 byte) exp, range 0-127
+ *                  Effect: Sets Track's expression (like a 2nd volume controller) to exp.
+ *  - 0xE4 to 0xE7: ~currently unknown~
+ *  - 0xE8:         Arguments: (1 byte) pan, range 0-127 : 0 = left, 64 = center, 127 = right
+ *                  Effect: Sets Track's pan position (like a 2nd volume controller) to pan.
+ *  - 0xE9:         ~currently unknown~
+ *  - 0xEA:         Arguments: (3 bytes) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xEB to 0xF5: ~currently unknown~
+ *  - 0xF6:         Arguments: (1 byte) unknown
+ *                  Effect: ~currently unknown~
+ *  - 0xF7 to 0xFF: ~currently unknown
+ *
+ * For every event where I don't even know how many / what arguments they take means that I simply have never seen them occur and therefore didn't look them up yet.
+ * None the less I don't think that I've skipped any important ones.
+ *
+ *
+ * Misc Information for above:
+ *
+ * delay_lut = { 96, 72, 64, 48, 36, 32, 24, 18, 16, 12, 9, 8, 6, 4, 3, 2 }
+ */
