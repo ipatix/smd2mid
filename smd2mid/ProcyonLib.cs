@@ -46,6 +46,7 @@ namespace smd2mid
                 drummap = File.ReadAllBytes("drummap.bin");
                 if (drummap.Length != 0x80) drummap = generateMap();
             }
+            else drummap = generateMap();
             if (File.Exists("transpose.bin"))
             {
                 transpose = File.ReadAllBytes("transpose.bin");
