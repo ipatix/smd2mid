@@ -46,12 +46,13 @@ namespace smd2mid
                 drummap = File.ReadAllBytes("drummap.bin");
                 if (drummap.Length != 0x80) drummap = generateMap();
             }
+            else drummap = generateMap();
             if (File.Exists("transpose.bin"))
             {
                 transpose = File.ReadAllBytes("transpose.bin");
                 if (transpose.Length != 0x80) transpose = generateStaticMap();
             }
-            else drummap = generateStaticMap();
+            else transpose = generateStaticMap();
         }
 
         private static byte[] generateMap()
